@@ -31,8 +31,7 @@ Citizen.CreateThread(function()
 		local playerCoords = GetEntityCoords(PlayerPedId())
 
 		for k,v in ipairs(Config.DoorList) do
-			v.isAuthorized = isAuthorized(v)
-
+			-- não precisamos mais de isAuthorized no client
 			if v.doors then
 				for k2,v2 in ipairs(v.doors) do
 					if v2.object and DoesEntityExist(v2.object) then
@@ -89,43 +88,21 @@ Citizen.CreateThread(function()
 
 				if v.size then size = v.size end
 				if v.locked then displayText = _U('locked') end
-				if v.isAuthorized then displayText = _U('press_button', displayText) end
 
+				-- mostra sempre a opção de interação
+				displayText = _U('press_button', displayText)
 				ESX.Game.Utils.DrawText3D(v.textCoords, displayText, size)
 
 				if IsControlJustReleased(0, 38) then
-					if v.isAuthorized then
-						--v.locked = not v.locked
-						if v.NeedsKey then
-							--TriggerServerEvent('esx_doorlock:updateState', k, v.locked) -- broadcast new state of the door to everyone
---############################						
-							local inventory = ESX.GetPlayerData().inventory
-							local count = 0
-							
-							for i=1, #inventory, 1 do
-							local itemname = v.keyNeeded
-								if inventory[i].name == itemname then
-									count = inventory[i].count
-									name = inventory[i].name
-								end
-							end
-								
-							if count > 0 then
-								v.locked = not v.locked
-								TriggerServerEvent('esx_doorlock:updateState', k, v.locked) -- Broadcast new state of the door to everyone
-									--if v.removekey then
-										--TriggerServerEvent('esx_keydoor:removekey', name, 1)
-									--end
-							else
-								ESX.ShowNotification('Você não tem chave para esta porta.')
-							end
+					-- pede autorização ao server
+					ESX.TriggerServerCallback('esx_doorlock:canOpen', function(allowed)
+						if allowed then
+							v.locked = not v.locked
+							TriggerServerEvent('esx_doorlock:updateState', k, v.locked)
 						else
-							--v.locked = not v.locked
-							--TriggerServerEvent('esx_doorlock:updateState', k, v.locked) -- Broadcast new state of the door to everyone						
-							ESX.ShowNotification('Você não tem chave para esta porta.')
+							ESX.ShowNotification("~r~Não tens permissão para abrir esta porta.")
 						end
---##########################
-					end
+					end, k)
 				end
 			end
 		end
@@ -135,34 +112,3 @@ Citizen.CreateThread(function()
 		end
 	end
 end)
-
-function isAuthorized(door)
-	if not ESX or not ESX.PlayerData.job then
-		return false
-	end
-	
-	if door.needJob then
-		for k,job in pairs(door.authorizedJobs) do
-			if job == ESX.PlayerData.job.name then
-				return true
-			end
-		end
-	else
-		return false
-	end
-		--return false
-end
---[[
-function IsAuthorized(doorID)
-
-	if doorID.needJob then
-		for _,job in pairs(doorID.authorizedJobs) do
-			if job == ESX.PlayerData.job.name then
-				return true
-			end
-		end
-	else
-	return true
-	end
-end
---]]
